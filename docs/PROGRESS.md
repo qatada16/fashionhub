@@ -7,10 +7,10 @@ date, what was built/changed, decisions made, and what's next.
 
 - [x] **Phase 0 — Preparation** (2026-07-18): brief analyzed, architecture + docs written,
       agents/skills created, repo initialized.
-- [ ] **Phase 1 — Foundation**: monorepo scaffolding, server skeleton (Express, Mongoose
-      models, auth), client skeleton (Vite, Tailwind, design system, routing), seed data.
-- [ ] **Phase 2 — AI Engine**: LangChain pipeline (intent + sentiment + tools + respond),
-      provider fallback, web chat endpoint + UI.
+- [x] **Phase 1 — Foundation** (2026-07-18): monorepo scaffolding, server skeleton (Express,
+      Mongoose models, auth), client skeleton (Vite, Tailwind, design system, routing), seed data.
+- [x] **Phase 2 — AI Engine** (2026-07-18): LangChain pipeline (intent + sentiment + tools +
+      respond), provider fallback, web chat endpoint + UI, order-via-chat, browser E2E.
 - [ ] **Phase 3 — Admin Dashboard**: products CRUD, orders, customers, conversations
       inbox, settings/Train-AI, export, analytics cards.
 - [ ] **Phase 4 — Messaging Integrations**: Meta webhook endpoint, WhatsApp send/receive,
@@ -19,6 +19,82 @@ date, what was built/changed, decisions made, and what's next.
       end-to-end testing, API docs, README, deployment guide, final push.
 
 ## Log
+
+### 2026-07-18 — Phase 2 complete: integration verified + fixes
+- Browser E2E (Playwright) on /chat: welcome chips, exact 5-item greeting menu, product
+  cards with strikethrough discount pricing (Black Embroidered Maxi Rs 6,500 → Rs 5,850),
+  grounded Islamabad delivery reply (Rs 200 / 2 days / free ≥ Rs 5,000), quick-reply
+  clicks, New chat reset, dark mode. Phase 1 regression (login → products → theme) passed.
+- Fixed: strict intent enum rejected synonym intents from Groq JSON mode (e.g. "browse")
+  → whole classification failed → canned fallback. `understand.js` now uses lenient
+  string schemas for Groq + `normalizeClassification()` (alias map browse→product_search
+  etc., unknown sentiment→neutral, language coercion). Order intent re-verified after fix.
+- Gemini model quota discovery (key-specific): this key has `limit: 0` (NO free quota)
+  for gemini-2.0-flash; 2.5-flash quota is tiny and was exhausted; `gemini-flash-lite-latest`
+  responds 200. `GEMINI_MODEL=gemini-flash-lite-latest` set in server/.env. Groq fallback
+  carries load seamlessly when Gemini 429s (proven live repeatedly).
+- User added Cloudinary credentials → wired into server/.env (used in Phase 3 uploads).
+- Next: Phase 3 — Admin Dashboard (products CRUD UI + image upload, orders, customers,
+  conversations inbox with intent/sentiment labels, settings/Train-AI, export, analytics).
+
+### 2026-07-18 — Phase 2 backend: AI conversation engine live-tested
+
+- Built `server/src/ai/`: `llm.js` (Gemini 2.5 Flash → Groq Llama 3.3 70B fallback wrapper,
+  429/error tolerant), `understand.js` (one structured-output call → intent/sentiment/
+  language/entities, with deterministic entity augmentation: category keywords, colors,
+  "under Rs X"), `tools.js` (pure Mongoose: searchProducts with progressive filter
+  relaxation, checkStock, getDeliveryInfo, getPolicies/getFaq/getPersona, trackOrder,
+  getTrending, getUpsells, createOrder with FH-YYYY-NNNN ids, city-based delivery charges,
+  freeAbove, atomic stock decrement), `respond.js` (grounded composing call, persona +
+  sentiment tone + language mirroring, strict no-invention rules), `engine.js`
+  (orchestration, greeting menu + quickReplies, deterministic menu-number mapping,
+  multi-turn pendingOrder state machine on the conversation doc, preference learning).
+- Endpoints: `POST /api/chat` (zod: uuid sessionId, 1-1000 char message; rate-limited
+  20/min/IP via express-rate-limit, override with CHAT_RATE_LIMIT_PER_MIN) and
+  `GET /api/chat/:sessionId/history`. Conversation model gained `pendingOrder`,
+  `context.lastProductIds/lastEntities`, and message `products` snapshots.
+- Provider quirks solved: Gemini response_schema rejects type unions → strict optional
+  schema for Gemini function-calling; Groq server-side tool validation is brittle
+  (nulls, string numbers, stringified arrays, extra keys) → JSON mode + lenient
+  client-side zod schema for Groq. Fallback unit-tested (bogus Gemini model → Groq
+  answered) and proven live: Gemini 2.5 Flash free tier is only ~20 req/DAY — quota
+  exhausted mid-testing, Groq served everything after with zero endpoint failures.
+- Live tests (all via curl against Atlas): greeting menu, "black dress for Eid" (Black
+  Embroidered Maxi Rs 6500 -10%), "shoes under Rs 3000" (4 correct matches), "Do you
+  have XL?" context follow-up with stock counts, Lahore delivery (Rs 150/1 day),
+  return policy, discounts, trending, Roman Urdu reply in Roman Urdu, angry-parcel
+  apology + human handoff. Two full chat orders placed: FH-2026-0001 (Red Party Frock M,
+  Rs 5200, free delivery >5000, incl. change-of-mind mid-flow) and FH-2026-0002 (2x Beige
+  Lawn Kurti L, Rs 3060+250 Karachi = 3310). Verified in Mongo: totals, stock decrements
+  (8→7, 8→6), soldCount bumps, customer prefs/language, trackOrder finds both.
+- Latency: ~2-6s per message (2 LLM calls); Groq ≈1-2s/call, Gemini ≈2-3s/call.
+- Known rough edges: Groq occasionally suggests an extra product despite the grounding
+  rule (mostly tamed); one legacy test customer has an address stored as name (guard
+  added since). Consider GEMINI_MODEL=gemini-2.0-flash (200 RPD free) for demos.
+- Next: Phase 3 dashboard (conversations inbox can reuse message intents/sentiments).
+
+### 2026-07-18 — Phase 2 (frontend): public web chat UI
+
+- Public route `/chat` (no auth, outside dashboard shell) with minimal header: serif
+  wordmark → /chat, "AI Sales Assistant" tagline, New chat, theme toggle, Admin → /login.
+- Chat per design system: customer bubbles surface-2 left, assistant accent-tinted right,
+  160ms slide-in from sender side with reduced-motion guard, typing indicator (three
+  bouncing accent dots), quick-reply chips (ghost pills, accent border on hover,
+  fade-stagger) under the latest assistant message, welcome state with 5 starter chips
+  (incl. Urdu), horizontal product mini-card row (3/4 lazy image, serif name,
+  strikethrough + discounted `Rs x,xxx` when discount% > 0, tap sends "Tell me more
+  about `<name>`"), success-tinted order confirmation card (serif orderId + total).
+- Session: `crypto.randomUUID()` in localStorage `fh-chat-session`; history loaded on
+  mount (GET `/api/chat/:sessionId/history`) with skeleton bubbles; New chat resets both.
+- Sends via TanStack useMutation (POST `/api/chat`), optimistic customer bubble, failed
+  sends keep the bubble with a Retry affordance and restore text to input; smart
+  auto-scroll (only when near bottom); textarea autosizes 1-4 rows via
+  `field-sizing-content`, Enter sends / Shift+Enter newline.
+- Files: `client/src/features/chat/*` (ChatPage, MessageBubble, ProductMiniCard,
+  OrderCard, QuickReplies, TypingIndicator, ChatInput, session, format),
+  `client/src/api/chat.js`, route added in `App.jsx`. `npm run build` + dev boot verified.
+- E2E hooks: `[data-testid="chat-input"|"chat-send"|"quick-reply"|"product-card"|
+  "new-chat"|"retry-send"|"message-customer"|"message-assistant"|"order-card"]`.
 
 ### 2026-07-18 — Phase 1 complete: integration verified
 - Server skeleton live-tested against Atlas: auth (login/me/401 guard), admin products

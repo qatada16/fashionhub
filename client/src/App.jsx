@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layout/DashboardLayout.jsx';
 import ProtectedRoute from './features/auth/ProtectedRoute.jsx';
 import LoginPage from './features/auth/LoginPage.jsx';
+import ChatPage from './features/chat/ChatPage.jsx';
 import DashboardPage from './features/dashboard/DashboardPage.jsx';
 import ProductsPage from './features/products/ProductsPage.jsx';
 import OrdersPage from './features/orders/OrdersPage.jsx';
@@ -13,6 +14,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/chat" element={<ChatPage />} />
       <Route
         element={
           <ProtectedRoute>
