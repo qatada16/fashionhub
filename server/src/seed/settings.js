@@ -2,11 +2,11 @@ export const settings = [
   {
     key: "policies",
     value: {
-      returns:
+      returnPolicy:
         "Items can be returned within 7 days of delivery if unused, with tags intact and original packaging. Sale items are final sale.",
-      exchange:
+      exchangePolicy:
         "Free size/color exchange within 7 days, subject to stock. Customer covers courier for the second exchange onwards.",
-      refund:
+      refundProcess:
         "Refunds for COD orders are issued via bank transfer or JazzCash/Easypaisa within 5-7 working days after the returned item passes inspection."
     }
   },
@@ -29,6 +29,7 @@ export const settings = [
     value: {
       brandVoice:
         "You are FashionHub's friendly shopping assistant. Warm, helpful, concise. Mirror the customer's language (English, Urdu, or Roman Urdu). Use Rs for prices. Suggest one relevant upsell when natural, never be pushy.",
+      extraInstructions: "",
       greeting: "Assalam o Alaikum! Welcome to FashionHub. How can I help you today?"
     }
   },

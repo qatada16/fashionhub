@@ -9,6 +9,7 @@ const badge = cva(
         success: 'bg-success/12 text-success',
         warn: 'bg-warn/12 text-warn',
         danger: 'bg-danger/12 text-danger',
+        accent: 'bg-accent/12 text-accent',
         neutral: 'bg-surface-2 text-ink-soft',
       },
     },

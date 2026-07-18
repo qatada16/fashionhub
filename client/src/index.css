@@ -36,3 +36,29 @@
 body {
   @apply bg-canvas text-ink font-body antialiased;
 }
+
+@layer components {
+  .swatch {
+    @apply inline-block size-2.5 shrink-0 rounded-full border border-line bg-surface-2;
+  }
+  .swatch-black { background-color: black; }
+  .swatch-white { background-color: white; }
+  .swatch-red { background-color: crimson; }
+  .swatch-blue { background-color: steelblue; }
+  .swatch-navy { background-color: navy; }
+  .swatch-green { background-color: seagreen; }
+  .swatch-olive { background-color: olive; }
+  .swatch-yellow { background-color: gold; }
+  .swatch-orange { background-color: darkorange; }
+  .swatch-pink { background-color: palevioletred; }
+  .swatch-purple { background-color: rebeccapurple; }
+  .swatch-brown { background-color: saddlebrown; }
+  .swatch-beige { background-color: wheat; }
+  .swatch-cream { background-color: cornsilk; }
+  .swatch-grey { background-color: slategray; }
+  .swatch-gray { background-color: slategray; }
+  .swatch-maroon { background-color: maroon; }
+  .swatch-gold { background-color: goldenrod; }
+  .swatch-silver { background-color: silver; }
+  .swatch-tan { background-color: tan; }
+}

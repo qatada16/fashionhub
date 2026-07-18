@@ -12,9 +12,9 @@ export function THead({ columns }) {
   return (
     <thead className="sticky top-0 bg-surface-2">
       <tr>
-        {columns.map((col) => (
+        {columns.map((col, i) => (
           <th
-            key={col}
+            key={`${col}-${i}`}
             className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-ink-soft"
           >
             {col}
@@ -29,8 +29,12 @@ export function TBody({ children }) {
   return <tbody className="divide-y divide-line">{children}</tbody>;
 }
 
-export function TRow({ children }) {
-  return <tr className="transition-colors hover:bg-surface-2">{children}</tr>;
+export function TRow({ className, children, ...props }) {
+  return (
+    <tr className={clsx('transition-colors hover:bg-surface-2', className)} {...props}>
+      {children}
+    </tr>
+  );
 }
 
 export function TCell({ className, children }) {

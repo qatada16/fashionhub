@@ -14,7 +14,8 @@ function buildSystem({ persona, language, sentiment }) {
     sentiment === "angry" || sentiment === "frustrated"
       ? "The customer is upset: start with a sincere apology, be extra empathetic, and offer to connect them with a human team member."
       : "Be warm, upbeat and helpful.";
-  return `${persona?.brandVoice || "You are FashionHub's friendly shopping assistant."}
+  const extra = persona?.extraInstructions ? `\n${persona.extraInstructions}` : "";
+  return `${persona?.brandVoice || "You are FashionHub's friendly shopping assistant."}${extra}
 
 STRICT RULES:
 - Only mention products, prices, stock, delivery charges and policies that appear in the DATA block. Never invent or guess any product, price, discount, stock level or policy. If the data has no answer, say so and offer to help another way.

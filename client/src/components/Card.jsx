@@ -1,8 +1,8 @@
 import clsx from 'clsx';
 
-export default function Card({ title, action, className, children }) {
+export default function Card({ title, action, className, children, ...props }) {
   return (
-    <div className={clsx('rounded-xl border border-line bg-surface p-5', className)}>
+    <div className={clsx('rounded-xl border border-line bg-surface p-5', className)} {...props}>
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between">
           {title && <h3 className="font-display text-lg font-medium tracking-tight">{title}</h3>}

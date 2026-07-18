@@ -1,6 +1,7 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
+import { pathToFileURL } from "node:url";
 import { connectDB } from "../config/db.js";
 import Product from "../models/Product.js";
 import Admin from "../models/Admin.js";
@@ -8,7 +9,7 @@ import Setting from "../models/Setting.js";
 import { products } from "./products.js";
 import { settings } from "./settings.js";
 
-try {
+export async function runSeed({ disconnect = true } = {}) {
   const conn = await connectDB();
   console.log(`Connected to ${conn.name}`);
 
@@ -27,9 +28,17 @@ try {
   await Product.syncIndexes();
   console.log("Product indexes synced");
 
-  await mongoose.disconnect();
-  console.log("Seed complete");
-} catch (err) {
-  console.error("Seed failed:", err);
-  process.exit(1);
+  if (disconnect) {
+    await mongoose.disconnect();
+    console.log("Seed complete");
+  }
+}
+
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+  try {
+    await runSeed();
+  } catch (err) {
+    console.error("Seed failed:", err);
+    process.exit(1);
+  }
 }

@@ -5,6 +5,11 @@ export function notFound(req, res) {
 export function errorHandler(err, req, res, next) {
   if (res.headersSent) return next(err);
 
+  if (err.name === "MulterError") {
+    const message =
+      err.code === "LIMIT_FILE_SIZE" ? "Image too large (max 5MB)" : err.message;
+    return res.status(400).json({ error: message });
+  }
   if (err.name === "CastError") {
     return res.status(400).json({ error: "Invalid id" });
   }
