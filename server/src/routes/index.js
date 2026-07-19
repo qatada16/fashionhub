@@ -10,6 +10,7 @@ import adminUploadsRoutes from "./adminUploads.routes.js";
 import adminExportRoutes from "./adminExport.routes.js";
 import { stats } from "../controllers/adminStats.controller.js";
 import chatRoutes from "./chat.routes.js";
+import webhooksRoutes from "./webhooks.routes.js";
 import { requireAuth } from "../middleware/auth.js";
 
 const router = Router();
@@ -21,6 +22,7 @@ router.get("/health", (req, res) => {
 router.use("/auth", authRoutes);
 router.use("/products", productsRoutes);
 router.use("/chat", chatRoutes);
+router.use("/webhooks", webhooksRoutes);
 
 router.use("/admin", requireAuth);
 router.get("/admin/stats", stats);

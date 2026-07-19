@@ -1,0 +1,202 @@
+{
+  "name": "FashionHub — Order Confirmation",
+  "nodes": [
+    {
+      "id": "wh-order-created",
+      "name": "Order Created Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-created",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "set-format-msg",
+      "name": "Format Confirmation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, -110],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "phone",
+              "value": "={{ ($json.body.phone || '').replace(/[^0-9]/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "message",
+              "value": "=Assalam o Alaikum {{ $json.body.customerName }}! 🎉\n\nYour FashionHub order {{ $json.body.orderId }} is confirmed.\n\nItems:\n{{ ($json.body.items || []).map(i => `• ${i.name}${i.size ? ' (' + i.size + ')' : ''} x${i.qty || 1}`).join('\\n') }}\n\nTotal: Rs {{ $json.body.total }}\nPayment: Cash on Delivery\nDelivery city: {{ $json.body.city || 'N/A' }}\n\nWe will message you the tracking number once it ships. Thank you for shopping with FashionHub!",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "if-has-phone",
+      "name": "Has Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [440, -110],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.phone }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-whatsapp-send",
+      "name": "Send WhatsApp Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [660, -110],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v21.0/{{ $env.WHATSAPP_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.WHATSAPP_ACCESS_TOKEN }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ messaging_product: 'whatsapp', recipient_type: 'individual', to: $json.phone, type: 'text', text: { preview_url: false, body: $json.message } }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "set-admin-mail",
+      "name": "Compose Admin Alert",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 130],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "subject",
+              "value": "=New order {{ $json.body.orderId }} — Rs {{ $json.body.total }} ({{ $json.body.channel }})",
+              "type": "string"
+            },
+            {
+              "id": "b2",
+              "name": "text",
+              "value": "=A new order just came in.\n\nOrder: {{ $json.body.orderId }}\nCustomer: {{ $json.body.customerName }}\nPhone: {{ $json.body.phone || 'N/A' }}\nCity: {{ $json.body.city || 'N/A' }}\nChannel: {{ $json.body.channel }}\nTotal: Rs {{ $json.body.total }}\n\nItems:\n{{ ($json.body.items || []).map(i => `- ${i.name}${i.size ? ' (' + i.size + ')' : ''} x${i.qty || 1}`).join('\\n') }}\n\nOpen the dashboard to confirm it.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "email-admin-order",
+      "name": "Email Admin (New Order)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [440, 130],
+      "parameters": {
+        "fromEmail": "={{ $env.ADMIN_EMAIL }}",
+        "toEmail": "={{ $env.ADMIN_EMAIL }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {}
+      },
+      "credentials": {
+        "smtp": {
+          "name": "FashionHub SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Order Created Webhook": {
+      "main": [
+        [
+          {
+            "node": "Format Confirmation",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Compose Admin Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Has Phone?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Phone?": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Compose Admin Alert": {
+      "main": [
+        [
+          {
+            "node": "Email Admin (New Order)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Karachi"
+  },
+  "pinData": {}
+}

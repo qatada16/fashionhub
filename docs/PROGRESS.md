@@ -14,12 +14,97 @@ date, what was built/changed, decisions made, and what's next.
 - [x] **Phase 3 — Admin Dashboard** (2026-07-18): products CRUD + Cloudinary upload, orders
       with status stepper, customers, conversations inbox, settings/Train-AI, CSV export,
       analytics — full browser E2E (vs in-memory Mongo; Atlas IP needs re-whitelisting).
-- [ ] **Phase 4 — Messaging Integrations**: Meta webhook endpoint, WhatsApp send/receive,
-      Instagram send/receive, voice transcription, n8n workflows.
+- [x] **Phase 4 — Messaging Integrations** (2026-07-20): Meta webhook (signed, deduped),
+      WhatsApp + Instagram adapters, Groq-Whisper voice transcription, n8n workflows
+      (import-validated), order-hallucination bug fixed, tokens verified live.
 - [ ] **Phase 5 — Deploy & Polish**: Render + Vercel + Atlas live, keep-alive, seed prod DB,
       end-to-end testing, API docs, README, deployment guide, final push.
 
 ## Log
+
+### 2026-07-20 — Phase 4 complete: verified + critical order bug fixed
+- **Bug (user-reported)**: chat claimed "order placed" but no order existed. Cause: user
+  sent phone + address in ONE message while flow was awaiting `phone` — address dropped
+  (only parsed when awaiting `address`), order stayed incomplete, respond-LLM
+  hallucinated success. Fixed in `engine.js`: opportunistic capture of phone/name/address
+  from any order-flow message (ADDRESS_RE detection, phone stripped first) + explicit
+  "order NOT placed yet, never claim it is" instruction; `respond.js` rule: only claim
+  placed when data has `orderConfirmed` (always state orderId). Reproduced user's exact
+  scenario against Atlas → FH-2026-0003 created correctly. User's stuck conversation
+  recovers by re-sending the address.
+- **Search verified** (paraphrase battery vs Atlas): "something elegant to wear at a
+  wedding" → party/formal wear; Roman Urdu "kuch acha sa casual men k liye" → men's
+  casual shirts; "cheap sneakers under 3k" → shoes ≤ Rs 3000; "bag that goes with formal
+  wear" → Office Satchel. Design is LLM entity-extraction + deterministic Mongo (not
+  embeddings) — right free-tier trade-off, fully grounded.
+- **Phase 4 verification (mine, on top of agents')**: n8n JSONs schema-checked + agent's
+  real `n8n import:workflow` pass; webhook smoke vs Atlas: handshake 200/403, unsigned
+  401, signed WA payload → EVENT_RECEIVED → engine → send attempted (Meta 131030 for
+  fake recipient = correctly formed call), /api/chat regression passed. Meta env vars +
+  generated META_VERIFY_TOKEN wired into server/.env; `npm run check:meta` PASS both
+  channels (WA test number, IG @qatadingz).
+- Next: Phase 5 — deploy (Render server + n8n, Vercel client, Meta webhook config §5d,
+  n8n env/credential setup, keep-alive), API docs, README polish, final E2E.
+
+### 2026-07-20 — Phase 4 integrations: Meta webhook + WhatsApp/Instagram adapters + voice
+
+- Unified Meta webhook `GET/POST /api/webhooks/meta` (`routes/webhooks.routes.js`):
+  verify-token handshake, `X-Hub-Signature-256` HMAC over raw body (new `verify`
+  callback in app.js stashes `req.rawBody`), instant 200 `EVENT_RECEIVED` + setImmediate
+  async processing, in-memory 500-id LRU dedupe, routes by `body.object`.
+- Channel adapters `src/channels/`: `whatsapp.js` (parse text/audio/interactive
+  incl. list_reply/button_reply; send text, interactive LIST greeting menu ["FashionHub
+  Menu" section], up to 4 image product cards with price/discount captions + text-digest
+  fallback, order confirmation, mark-read, media download via GET /<MEDIA_ID> → bearer
+  fetch), `instagram.js` (parse DMs via entry.messaging, skip is_echo/own-account;
+  send text with numbered quick-reply lines, image `attachment` + caption line — note:
+  IG rejects plural `attachments`, found live), `dispatcher.js` (audio → download →
+  transcribe → `handleChatMessage` → channel sends; all failures logged, never thrown).
+- Voice `src/ai/transcribe.js`: Groq `whisper-large-v3-turbo` multipart primary →
+  Gemini inlineData fallback → null → bilingual "couldn't hear" reply from dispatcher.
+- n8n glue `services/n8n.service.js`: fire-and-forget `notifyN8n(event, payload)`
+  (no-op + debug log when `N8N_WEBHOOK_BASE_URL` unset); engine now emits
+  `order-created` (from advanceOrderFlow success) and `complaint-received`.
+- `npm run check:meta` (`scripts/check-meta.js`): both tokens PASS live (WA test number
+  +1 555-169-1728 "Test Number"; IG @qatadingz). Graph version env-overridable via
+  `META_GRAPH_VERSION` (default v25.0). `.env.example` updated.
+- Live-tested against Atlas: handshake 200/403, unsigned + bad-signature POST → 401,
+  signed WA text "Hi" → engine ran, greeting LIST send attempted (Meta 131030
+  "recipient not in allowed list" — expected for fake sender, logged gracefully),
+  duplicate wamid skipped, list_reply "Delivery Information" → delivery_query intent,
+  fake-media audio → graceful voice fallback attempt, IG text → product_search;
+  whatsapp + instagram customers/conversations verified in Mongo; POST /api/chat
+  regression passed.
+- For live traffic user must configure Meta app webhooks (callback URL
+  `<host>/api/webhooks/meta`, verify token = META_VERIFY_TOKEN, subscribe WhatsApp
+  `messages` field + Instagram `messages`) and add tester recipients.
+- Next: n8n workflow JSONs + Phase 5 deploy.
+
+### 2026-07-20 — Phase 4 (n8n): automation workflows authored
+
+- Created `n8n/workflows/` with three importable workflow JSONs (core nodes only —
+  Webhook v2, Set v3.4, IF v2.2, HTTP Request v4.2, Send Email v2.1, Schedule v1.2):
+  - `order-confirmation.json` — `POST /webhook/order-created` → format confirmation →
+    IF phone non-empty → WhatsApp Cloud API send (`graph.facebook.com/v21.0/
+    {{$env.WHATSAPP_PHONE_NUMBER_ID}}/messages`, Bearer `{{$env.WHATSAPP_ACCESS_TOKEN}}`);
+    parallel branch emails the admin a new-order alert. Webhook ACKs 200 immediately
+    (responseMode onReceived) regardless of branch outcomes.
+  - `admin-notify.json` — `POST /webhook/complaint-received` → complaint summary email
+    to `{{$env.ADMIN_EMAIL}}`. (Admin order email lives in order-confirmation because
+    two active workflows cannot share one webhook path in n8n.)
+  - `daily-sales-report.json` — Schedule 20:00 Asia/Karachi → login
+    `{{$env.SERVER_URL}}/api/auth/login` (FH_ADMIN_EMAIL/FH_ADMIN_PASSWORD) → JWT →
+    GET `/api/admin/stats` → today (salesByDay.last()) + all-time + top product +
+    low-stock summary → email admin.
+- No secrets in JSON: everything via `$env` expressions + one named SMTP credential
+  placeholder "FashionHub SMTP" (Brevo/Gmail setup steps in `n8n/README.md`, along
+  with import steps, Render env vars, and curl-based local test commands).
+- Validated: all three JSONs parse and match the export schema (nodes have
+  id/name/type/typeVersion/position/parameters; all connections resolve).
+- ACTION (user): after deploying n8n (DEPLOYMENT §8), set env vars
+  WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_ACCESS_TOKEN, SERVER_URL, ADMIN_EMAIL,
+  FH_ADMIN_EMAIL, FH_ADMIN_PASSWORD on the n8n service; create the "FashionHub SMTP"
+  credential; import + activate the workflows; set N8N_WEBHOOK_BASE_URL on the server.
 
 ### 2026-07-18 — Phase 3 complete: integration verified end-to-end
 - **Atlas blocker**: user's public IP (39.62.216.42) is no longer on the Atlas access

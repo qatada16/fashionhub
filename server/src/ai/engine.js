@@ -16,6 +16,7 @@ import {
   createOrder,
   effectivePrice
 } from "./tools.js";
+import { notifyN8n } from "../services/n8n.service.js";
 
 export const MENU = [
   "New Arrivals",
@@ -209,20 +210,23 @@ async function advanceOrderFlow({ convo, customer, understanding, message, chann
     const n = rawText.match(/\b(\d{1,2})\b/);
     if (n) po.qty = parseInt(n[1], 10);
   }
-  if (awaiting === "name" && !extractPhone(rawText)) {
-    const name = rawText.replace(/^(my name is|i am|i'm|mera naam)\s*/i, "").replace(/\s*(hai)$/i, "").trim();
-    const looksLikeAddress = /\d|flat|house|street|road|block|phase|sector|colony|town|boulevard|gali/i.test(name);
-    if (name && name.length <= 60 && !refInMessage && !looksLikeAddress) po.customerName = name;
-  }
+  // Customers often bundle fields in one message ("name + phone", "phone + address"),
+  // so capture opportunistically regardless of which field we asked for.
+  const ADDRESS_RE = /(flat|house|street|st\.|road|rd\.|block|phase|sector|colony|town|boulevard|gali|mohalla|dha|bahria|gulberg|apartment|floor|#)/i;
   const phone = extractPhone(rawText);
   if (phone && (awaiting === "phone" || !po.phone)) po.phone = phone;
-  if (awaiting === "address") {
-    po.street = rawText.replace(PHONE_RE, "").trim();
-    if (!po.city) {
-      const { cities } = await getDeliveryInfo();
-      const hit = cities.find((c) => rawText.toLowerCase().includes(c.name.toLowerCase()));
-      if (hit) po.city = hit.name;
-    }
+  const withoutPhone = rawText.replace(PHONE_RE, "").replace(/^[,\s]+|[,\s]+$/g, "").trim();
+  if (awaiting === "name" && !po.customerName) {
+    const name = withoutPhone.replace(/^(my name is|i am|i'm|mera naam)\s*/i, "").replace(/\s*(hai)$/i, "").trim();
+    if (name && name.length <= 60 && !refInMessage && !ADDRESS_RE.test(name) && !/\d/.test(name)) po.customerName = name;
+  }
+  if (!po.street && withoutPhone && (awaiting === "address" || ADDRESS_RE.test(withoutPhone))) {
+    po.street = withoutPhone;
+  }
+  if (po.street && !po.city) {
+    const { cities } = await getDeliveryInfo();
+    const hit = cities.find((c) => rawText.toLowerCase().includes(c.name.toLowerCase()));
+    if (hit) po.city = hit.name;
   }
 
   const missing = orderMissingField(po, customer);
@@ -249,6 +253,15 @@ async function advanceOrderFlow({ convo, customer, understanding, message, chann
     });
     convo.pendingOrder = null;
     convo.markModified("pendingOrder");
+    notifyN8n("order-created", {
+      orderId: order.orderId,
+      customerName: customer.name || po.customerName || null,
+      phone: customer.phone || po.phone || null,
+      items: order.items.map((i) => `${i.qty}x ${i.name}${i.size ? ` (${i.size})` : ""}`).join(", "),
+      total: order.total,
+      city: po.city,
+      channel
+    });
     const upsells = product ? await getUpsells(product) : [];
     return {
       data: {
@@ -291,7 +304,7 @@ async function advanceOrderFlow({ convo, customer, understanding, message, chann
         },
         stock: stockInfo ? { available: stockInfo.available, qty: stockInfo.qty } : null,
         askCustomerFor: missing,
-        instruction: `Ask the customer ONLY for their ${missing}${missing === "product" ? " (which item they want to order)" : ""}. If asking size or color, list the available options from product data. Do not mention or suggest any other product.`
+        instruction: `The order is NOT placed yet. NEVER say the order is placed, confirmed, booked, or successful — it is still being collected. Ask the customer ONLY for their ${missing}${missing === "product" ? " (which item they want to order)" : ""}. If asking size or color, list the available options from product data. Do not mention or suggest any other product.`
       }
     },
     products: product ? [productCard(product)] : [],
@@ -372,6 +385,13 @@ async function routeIntent({ understanding, convo, customer, message, channel, m
       data = { policies: await getPolicies() };
       break;
     case "complaint": {
+      notifyN8n("complaint-received", {
+        channel,
+        customerId: String(customer._id),
+        customerName: customer.name || null,
+        message: message.slice(0, 500),
+        sentiment: understanding.sentiment
+      });
       data = {
         policies: await getPolicies(),
         order: await trackOrder({ orderId: e.orderId, customerId: customer._id }),

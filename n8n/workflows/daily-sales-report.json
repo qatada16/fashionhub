@@ -1,0 +1,155 @@
+{
+  "name": "FashionHub — Daily Sales Report",
+  "nodes": [
+    {
+      "id": "schedule-daily",
+      "name": "Daily 20:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 20 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "http-login",
+      "name": "Login (get JWT)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 0],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SERVER_URL }}/api/auth/login",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ email: $env.FH_ADMIN_EMAIL, password: $env.FH_ADMIN_PASSWORD }) }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "http-stats",
+      "name": "Fetch Admin Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SERVER_URL }}/api/admin/stats",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.token }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "set-report",
+      "name": "Format Report",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [660, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "subject",
+              "value": "=FashionHub daily report — {{ $now.setZone('Asia/Karachi').toFormat('yyyy-MM-dd') }}: Rs {{ $json.salesByDay.last().total }} today",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "text",
+              "value": "=FashionHub — Daily Sales Report ({{ $now.setZone('Asia/Karachi').toFormat('cccc, dd LLL yyyy') }})\n\nToday\n  Revenue: Rs {{ $json.salesByDay.last().total }}\n  Orders: {{ $json.salesByDay.last().count }}\n\nAll time\n  Revenue: Rs {{ $json.revenue }}\n  Orders: {{ $json.ordersCount }}\n  Customers: {{ $json.customersCount }}\n  Open conversations: {{ $json.openConversations }}\n\nTop product: {{ ($json.topProducts && $json.topProducts[0]) ? `${$json.topProducts[0].name} (${$json.topProducts[0].soldCount} sold)` : 'N/A' }}\n\nLow stock (≤5 left):\n{{ ($json.lowStock || []).length ? $json.lowStock.map(p => `- ${p.name}: ${p.totalQty}`).join('\\n') : '- none' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "email-report",
+      "name": "Email Report",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [880, 0],
+      "parameters": {
+        "fromEmail": "={{ $env.ADMIN_EMAIL }}",
+        "toEmail": "={{ $env.ADMIN_EMAIL }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {}
+      },
+      "credentials": {
+        "smtp": {
+          "name": "FashionHub SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 20:00": {
+      "main": [
+        [
+          {
+            "node": "Login (get JWT)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Login (get JWT)": {
+      "main": [
+        [
+          {
+            "node": "Fetch Admin Stats",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Admin Stats": {
+      "main": [
+        [
+          {
+            "node": "Format Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Report": {
+      "main": [
+        [
+          {
+            "node": "Email Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Karachi"
+  },
+  "pinData": {}
+}

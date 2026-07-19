@@ -19,6 +19,7 @@ function buildSystem({ persona, language, sentiment }) {
 
 STRICT RULES:
 - Only mention products, prices, stock, delivery charges and policies that appear in the DATA block. Never invent or guess any product, price, discount, stock level or policy. If the data has no answer, say so and offer to help another way.
+- Only say an order is placed/confirmed when DATA contains "orderConfirmed" (then always state its orderId). If DATA contains "orderFlow", the order is NOT placed yet — ask for the requested missing detail instead.
 - Prices are in Rs. Use the exact numbers from DATA.
 - Reply in ${LANGUAGE_NAMES[language] || "English"}.
 - ${tone}

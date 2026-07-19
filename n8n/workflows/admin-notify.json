@@ -1,0 +1,93 @@
+{
+  "name": "FashionHub — Admin Notify (Complaint)",
+  "nodes": [
+    {
+      "id": "wh-complaint",
+      "name": "Complaint Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "complaint-received",
+        "responseMode": "onReceived",
+        "options": {}
+      }
+    },
+    {
+      "id": "set-complaint-mail",
+      "name": "Compose Complaint Email",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [220, 0],
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "subject",
+              "value": "=⚠ Complaint from {{ $json.body.customerName || 'Unknown customer' }} ({{ $json.body.channel }})",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "text",
+              "value": "=A customer complaint needs attention.\n\nCustomer: {{ $json.body.customerName || 'Unknown' }}\nPhone: {{ $json.body.phone || 'N/A' }}\nChannel: {{ $json.body.channel }}\nReceived: {{ $now.setZone('Asia/Karachi').toFormat('yyyy-MM-dd HH:mm') }} PKT\n\nMessage:\n{{ $json.body.text }}\n\nPlease follow up from the Conversations inbox in the dashboard.",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "email-admin-complaint",
+      "name": "Email Admin (Complaint)",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [440, 0],
+      "parameters": {
+        "fromEmail": "={{ $env.ADMIN_EMAIL }}",
+        "toEmail": "={{ $env.ADMIN_EMAIL }}",
+        "subject": "={{ $json.subject }}",
+        "emailFormat": "text",
+        "text": "={{ $json.text }}",
+        "options": {}
+      },
+      "credentials": {
+        "smtp": {
+          "name": "FashionHub SMTP"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Complaint Webhook": {
+      "main": [
+        [
+          {
+            "node": "Compose Complaint Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compose Complaint Email": {
+      "main": [
+        [
+          {
+            "node": "Email Admin (Complaint)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Karachi"
+  },
+  "pinData": {}
+}
