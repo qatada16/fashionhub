@@ -7,8 +7,27 @@ import { notFound, errorHandler } from "./middleware/error.js";
 export function createApp() {
   const app = express();
 
-  const allowedOrigins = [process.env.CLIENT_URL, "http://localhost:5173"].filter(Boolean);
-  app.use(cors({ origin: allowedOrigins, credentials: true }));
+  // Render/Vercel terminate TLS upstream; without this the rate limiter keys every
+  // request to the proxy IP.
+  app.set("trust proxy", 1);
+
+  const allowedOrigins = [
+    ...(process.env.CLIENT_URL || "").split(",").map((o) => o.trim()).filter(Boolean),
+    "http://localhost:5173"
+  ];
+  app.use(
+    cors({
+      origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin) || /\.vercel\.app$/.test(new URL(origin).hostname)) {
+          return callback(null, true);
+        }
+        const err = new Error(`Origin ${origin} not allowed by CORS`);
+        err.status = 403;
+        return callback(err);
+      },
+      credentials: true
+    })
+  );
   app.use(
     express.json({
       limit: "1mb",

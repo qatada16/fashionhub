@@ -17,10 +17,34 @@ date, what was built/changed, decisions made, and what's next.
 - [x] **Phase 4 — Messaging Integrations** (2026-07-20): Meta webhook (signed, deduped),
       WhatsApp + Instagram adapters, Groq-Whisper voice transcription, n8n workflows
       (import-validated), order-hallucination bug fixed, tokens verified live.
-- [ ] **Phase 5 — Deploy & Polish**: Render + Vercel + Atlas live, keep-alive, seed prod DB,
-      end-to-end testing, API docs, README, deployment guide, final push.
+- [~] **Phase 5 — Deploy & Polish** (2026-07-21, in progress): code + docs prep done
+      (prod hardening, render.yaml Blueprint, vercel.json, API.md, DEPLOYMENT.md rewritten
+      for 2026 UIs); remaining: user performs deploy clicks, then final live E2E.
 
 ## Log
+
+### 2026-07-21 — Phase 5 prep: production-ready + deploy docs (deploy clicks pending)
+- Verified user's new PERMANENT WhatsApp token + IG token: `npm run check:meta` PASS both.
+- Server production hardening (`app.js`, `index.js`, `package.json`): `trust proxy 1`
+  (rate-limit behind Render), CORS supports comma-list CLIENT_URL + any `*.vercel.app`
+  (bad origins → 403 via HttpError-style status), SIGTERM/SIGINT graceful shutdown,
+  `engines.node >=20`. Regression after changes: health/login/chat/CORS all pass; client
+  prod build clean.
+- Deploy configs: root `render.yaml` Blueprint (fashionhub-api Node + fashionhub-n8n
+  image service, all secrets sync:false → prompted at deploy), `client/vercel.json`
+  (Vite + SPA rewrites).
+- Docs: NEW `docs/API.md` (27 endpoints, error envelope, chat contract enums, env
+  appendix — written from actual code); `docs/DEPLOYMENT.md` fully rewritten against
+  July-2026 UIs (researched live): Meta app creation now requires business portfolio,
+  WhatsApp webhooks under WhatsApp→Configuration, permanent token via System users +
+  asset assignment, Instagram all-in-one "API setup with Instagram login" page,
+  Render Blueprint flow, Supabase Connect→Session pooler (IPv4 — Render free can't
+  reach Supabase direct IPv6), Vercel root-dir import + redeploy-after-env gotcha.
+  README links API.md + n8n README.
+- NEXT PROMPT: user does DEPLOYMENT.md §7-10 clicks (Render Blueprint, n8n setup,
+  Vercel, cron-job) + §5d Meta webhook config; then run final live E2E: check:meta,
+  prod seed, /chat on Vercel, WhatsApp message from allowed recipient, IG DM from
+  tester, n8n order-confirmation, dashboard on live API, keep-alive verify.
 
 ### 2026-07-20 — Phase 4 complete: verified + critical order bug fixed
 - **Bug (user-reported)**: chat claimed "order placed" but no order existed. Cause: user

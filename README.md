@@ -9,7 +9,9 @@ catalog, collects orders, and gives admins a full dashboard. CodeCelix internshi
 - [Project brief & goals](docs/PROJECT-BRIEF.md)
 - [Architecture & tech stack](docs/ARCHITECTURE.md)
 - [Database schema](docs/DATABASE-SCHEMA.md)
+- [API documentation](docs/API.md)
 - [Deployment & API keys guide](docs/DEPLOYMENT.md)
+- [n8n workflows](n8n/README.md)
 - [Progress log](docs/PROGRESS.md)
 
 ## Stack
