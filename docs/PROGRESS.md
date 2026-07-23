@@ -17,11 +17,31 @@ date, what was built/changed, decisions made, and what's next.
 - [x] **Phase 4 — Messaging Integrations** (2026-07-20): Meta webhook (signed, deduped),
       WhatsApp + Instagram adapters, Groq-Whisper voice transcription, n8n workflows
       (import-validated), order-hallucination bug fixed, tokens verified live.
-- [~] **Phase 5 — Deploy & Polish** (2026-07-21, in progress): code + docs prep done
-      (prod hardening, render.yaml Blueprint, vercel.json, API.md, DEPLOYMENT.md rewritten
-      for 2026 UIs); remaining: user performs deploy clicks, then final live E2E.
+- [x] **Phase 5 — Deploy & Polish** (2026-07-24): LIVE at fashion-hub16.vercel.app +
+      fashionhub-api-xq5h.onrender.com + fashionhub-n8n.onrender.com; landing page, full
+      live E2E passed, prod DB cleaned, DEMO-GUIDE.md written. PROJECT COMPLETE
+      (remaining user step: toggle n8n workflows Active).
 
 ## Log
+
+### 2026-07-24 — PROJECT COMPLETE: live production E2E passed
+- Live URLs: client https://fashion-hub16.vercel.app · API
+  https://fashionhub-api-xq5h.onrender.com · n8n https://fashionhub-n8n.onrender.com.
+- Live battery (all PASS): check:meta (permanent WA token + IG), 43 products seeded,
+  admin login, Meta webhook handshake on prod URL (+403 bad token), CORS from Vercel
+  origin, live AI chat with real products, n8n /healthz.
+- Prod Playwright E2E (all PASS): landing hero + CTA → chat, greeting menu (exact 5),
+  product cards ("beige handbags"), login → /dashboard redirect, revenue Rs 8,510,
+  legacy /products → /dashboard/products redirect, 20 product rows, 5 conversations
+  in inbox, on-brand 404, dark theme screenshots.
+- Prod Atlas cleaned: removed 18 synthetic test customers/conversations + 1 test order
+  from all testing phases; renamed 2 demo-order customers (address-as-name artifacts →
+  Ayesha Khan / Bilal Ahmed). Final: 4 customers, 2 orders (Rs 8,510), 4 conversations.
+- New docs/DEMO-GUIDE.md (demo flow, talking points, health checklist, dev-mode limits).
+- OUTSTANDING (user, 2 clicks): n8n workflows imported but NOT Active — webhook
+  /webhook/order-created returns 404 until each workflow is toggled Active in the n8n
+  UI (plus SMTP credential if email nodes unset). Also optional: WhatsApp/IG live
+  message test from the user's verified phone / tester account.
 
 ### 2026-07-24 — Frontend finishing touches: landing page + route restructure + 404
 
