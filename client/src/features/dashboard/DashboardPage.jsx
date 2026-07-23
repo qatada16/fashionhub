@@ -155,7 +155,7 @@ export default function DashboardPage() {
               {stats.recentOrders.map((o) => (
                 <tr
                   key={o.id}
-                  onClick={() => navigate(`/orders?open=${o.id}`)}
+                  onClick={() => navigate(`/dashboard/orders?open=${o.id}`)}
                   className="cursor-pointer transition-colors hover:bg-surface-2"
                   data-testid="recent-order-row"
                 >

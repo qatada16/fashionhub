@@ -101,7 +101,7 @@ export default function CustomerDrawer({ customerId, onClose }) {
                   <li key={o.id ?? o._id}>
                     <button
                       type="button"
-                      onClick={() => navigate(`/orders?open=${o.id ?? o._id}`)}
+                      onClick={() => navigate(`/dashboard/orders?open=${o.id ?? o._id}`)}
                       className="flex w-full items-center justify-between gap-3 p-3 text-left transition-colors hover:bg-surface-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                       data-testid="customer-order"
                     >

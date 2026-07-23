@@ -23,6 +23,26 @@ date, what was built/changed, decisions made, and what's next.
 
 ## Log
 
+### 2026-07-24 — Frontend finishing touches: landing page + route restructure + 404
+
+- NEW public landing page at `/` (`client/src/features/landing/LandingPage.jsx`):
+  editorial per design system — sticky minimal nav (serif wordmark, "Try the assistant"
+  → /chat, "Admin" → /login, theme toggle), hero ("Your fashion store, answering every
+  DM.") with primary CTA → /chat + ghost CTA → /login and a static chat-preview card
+  reusing the real bubble styling (Urdu/English mini conversation + product mini-card),
+  4 line-border feature cards, channel strip (WhatsApp/Instagram/Web), small footer.
+  Motion: fade+8px rise whileInView (once) with reduced-motion guard. Testids:
+  `landing-hero`, `landing-cta-chat`, `nav-admin`.
+- Route restructure: dashboard now lives under `/dashboard[/products|orders|customers|
+  conversations|settings]` (nested protected route). Updated nav.js paths (Topbar title
+  derivation unaffected), login redirects (already-authed `/login` → /dashboard, success
+  → /dashboard or `state.from`), Dashboard recent-orders + customer-drawer order links
+  → `/dashboard/orders?open=...`. Legacy paths `/products` etc. → `Navigate replace`
+  redirects so old bookmarks keep working. 401 interceptor target stays /login.
+- NEW on-brand 404 (`NotFoundPage.jsx`, serif "Lost in the racks?", ghost Home + Chat
+  buttons) replaces the old catch-all redirect. Chat header wordmark now links to `/`.
+- Verified: `npm run build` zero errors; dev server boots (curl 200).
+
 ### 2026-07-21 — Phase 5 prep: production-ready + deploy docs (deploy clicks pending)
 - Verified user's new PERMANENT WhatsApp token + IG token: `npm run check:meta` PASS both.
 - Server production hardening (`app.js`, `index.js`, `package.json`): `trust proxy 1`

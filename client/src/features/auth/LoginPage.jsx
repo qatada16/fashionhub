@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  if (token) return <Navigate to="/" replace />;
+  if (token) return <Navigate to="/dashboard" replace />;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       const { data } = await api.post('/api/auth/login', { email, password });
       setAuth({ token: data.token, admin: data.admin ?? null });
-      navigate(location.state?.from ?? '/', { replace: true });
+      navigate(location.state?.from ?? '/dashboard', { replace: true });
     } catch (err) {
       setError(
         err.response?.data?.message ?? 'Could not sign in. Check your credentials and try again.'

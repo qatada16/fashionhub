@@ -24,7 +24,8 @@ function ChatHeader({ onNewChat }) {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-line bg-canvas/90 px-4 backdrop-blur-sm sm:px-6">
       <Link
-        to="/chat"
+        to="/"
+        aria-label="FashionHub home"
         className="rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
         <span className="font-display text-xl font-semibold tracking-tight">FashionHub</span>

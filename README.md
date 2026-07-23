@@ -1,5 +1,7 @@
 # FashionHub — AI Fashion Sales Assistant
 
+**Live:** [fashion-hub16.vercel.app](https://fashion-hub16.vercel.app) · [API](https://fashionhub-api-xq5h.onrender.com/api/health) · [Demo guide](docs/DEMO-GUIDE.md)
+
 AI sales assistant for clothing brands: auto-replies to Instagram DMs and WhatsApp,
 understands queries (English + Urdu, text + voice), recommends products from a live
 catalog, collects orders, and gives admins a full dashboard. CodeCelix internship project.
